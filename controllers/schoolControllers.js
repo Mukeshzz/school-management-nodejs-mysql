@@ -1,4 +1,5 @@
 import { addSchool, getSchoolLists } from "../model/schoolModel.js";
+import { calculateDistance } from "../utils/distanceCalculator.js";
 
 const addSchoolController = async (req, res) => {
   try {
@@ -21,20 +22,42 @@ const addSchoolController = async (req, res) => {
   }
 };
 
-
 const getListController = async (req, res) => {
-    try {
-        const lists = await getSchoolLists();
-        return res.status(200).json(lists)
-    } catch (err) {
-        console.error("Error in controller:", err.message);
-        return res.status(500)
-          .json({ message: "Database error.", error: err.message });
-      }
-        
+  try {
+    const { latitude, longitude } = req.query;
+    console.log(latitude, longitude);
+    if (isNaN(latitude) || isNaN(longitude)) {
+      throw new Error("Invalid user coordinates");
     }
+    const lists = await getSchoolLists();
+    console.log(lists)
+    const userLat = parseFloat(latitude);
+    const userLon = parseFloat(longitude);
+    console.log(userLat)
+    console.log(userLon)
 
+    const sortedSchools = lists
+      .map((school) => ({
+        ...school,
+        distance: calculateDistance(
+          userLat,
+          userLon,
+          school.latitude,
+          school.longitude
+        ),
+      }
+    ))
+      .sort((a, b) => a.distance - b.distance);
 
+    res.status(200).json(sortedSchools);
 
+    
+  } catch (err) {
+    console.error("Error in controller:", err.message);
+    return res
+      .status(500)
+      .json({ message: "Database error.", error: err.message });
+  }
+};
 
 export { addSchoolController, getListController };
